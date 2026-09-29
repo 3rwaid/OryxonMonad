@@ -1,0 +1,258 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-gray-50 text-gray-900 font-sans antialiased overflow-x-hidden;
+  }
+
+  h1, h2, h3, h4 {
+    @apply font-display;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 px-6 py-3 bg-forest-600 text-white font-semibold rounded-xl
+           hover:bg-forest-700 active:bg-forest-800 transition-all duration-200 shadow-lg shadow-forest-600/20
+           hover:shadow-xl hover:shadow-forest-600/30 hover:-translate-y-0.5;
+  }
+
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-2 px-6 py-3
+         font-semibold rounded-xl border-2
+         transition-all duration-200 hover:-translate-y-0.5;
+  }
+
+  .btn-gold {
+    @apply inline-flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-gold-500 to-gold-600
+           text-white font-semibold rounded-xl hover:from-gold-600 hover:to-gold-700 transition-all duration-200
+           shadow-lg shadow-gold-500/20 hover:shadow-xl hover:shadow-gold-500/30 hover:-translate-y-0.5;
+  }
+
+  .card {
+    @apply bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all duration-300;
+  }
+
+  .card-glass {
+    @apply bg-white/80 backdrop-blur-xl rounded-2xl border border-white/50 shadow-lg;
+  }
+
+  .gradient-text {
+    @apply bg-gradient-to-r from-forest-600 via-forest-500 to-forest-400 bg-clip-text text-transparent;
+  }
+
+  .stat-card {
+    @apply bg-white rounded-2xl p-6 border border-gray-100 shadow-sm hover:shadow-lg
+           hover:border-forest-200 transition-all duration-300 hover:-translate-y-1;
+  }
+}
+
+/* ── Ecosystem Journey animations ── */
+@keyframes eco-float {
+  0%, 100% { transform: translateY(0px); }
+  50%       { transform: translateY(-10px); }
+}
+@keyframes eco-pulse-ring {
+  0%   { transform: translate(-50%, -50%) scale(0.6); opacity: 0.16; }
+  100% { transform: translate(-50%, -50%) scale(3.4); opacity: 0; }
+}
+@keyframes eco-particle-flow {
+  0%   { left: -4px; opacity: 0; transform: scale(0.4); }
+  8%   { opacity: 1; transform: scale(1); }
+  92%  { opacity: 1; }
+  100% { left: calc(100% + 4px); opacity: 0; transform: scale(0.4); }
+}
+@keyframes eco-o2-rise {
+  0%   { opacity: 0.9; transform: translateY(0) translateX(0) scale(1); }
+  100% { opacity: 0; transform: translateY(-56px) translateX(var(--eco-dx, 8px)) scale(0.7); }
+}
+@keyframes eco-network-node {
+  0%, 100% { transform: scale(1); opacity: 0.5; }
+  50%       { transform: scale(1.6); opacity: 0.12; }
+}
+@keyframes eco-glow-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+@keyframes eco-reveal {
+  from { opacity: 0; transform: translateY(28px) scale(0.95); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes eco-icon-grow {
+  0%   { transform: scale(0.35) rotate(-12deg); opacity: 0; }
+  65%  { transform: scale(1.18) rotate(4deg); opacity: 1; }
+  100% { transform: scale(1) rotate(0deg); opacity: 1; }
+}
+
+/* ── Gallery slide animations ── */
+@keyframes gallery-in-right {
+  from { opacity: 0; transform: translateX(6%); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes gallery-in-left {
+  from { opacity: 0; transform: translateX(-6%); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+/* ── APR badge shimmer ── */
+@keyframes apr-shimmer {
+  0%   { transform: translateX(-100%); }
+  60%  { transform: translateX(100%); }
+  100% { transform: translateX(100%); }
+}
+
+/* ── CTA Section animations ── */
+@keyframes cta-shimmer {
+  0%   { background-position: 0% 0%; opacity: 0.8; }
+  100% { background-position: 100% 100%; opacity: 1; }
+}
+@keyframes cta-btn-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(34,197,94,0.45), 0 8px 24px rgba(34,197,94,0.25); }
+  50%       { box-shadow: 0 0 0 10px rgba(34,197,94,0), 0 8px 32px rgba(34,197,94,0.4); }
+}
+
+/* ── Ecosystem Dashboard animations ── */
+@keyframes dash-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.4; transform: scale(0.8); }
+}
+@keyframes dash-orbit {
+  from { transform: rotate(0deg) translateX(0); }
+  to   { transform: rotate(360deg) translateX(0); }
+}
+@keyframes dash-tree-grow {
+  from { transform: scaleY(0); opacity: 0; }
+  to   { transform: scaleY(1); opacity: 1; }
+}
+@keyframes dash-tree-icon-grow {
+  0%   { transform: scale(0.3); opacity: 0; }
+  60%  { transform: scale(1.12); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+@keyframes dash-ambient-particle {
+  0%   { transform: translateY(0) translateX(0); opacity: 0.2; }
+  100% { transform: translateY(-12px) translateX(6px); opacity: 0.5; }
+}
+.dash-flow-path {
+  stroke-dasharray: 8 12;
+  animation: dash-flow-path-anim 3s linear infinite;
+}
+@keyframes dash-flow-path-anim {
+  from { stroke-dashoffset: 0; }
+  to   { stroke-dashoffset: -40; }
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+@keyframes cinematic-slide-next {
+  0% {
+    opacity: 0;
+    transform: translateX(7%) scale(1.08);
+    filter: blur(3px);
+  }
+
+  35% {
+    opacity: 1;
+    filter: blur(0);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+@keyframes cinematic-slide-prev {
+  0% {
+    opacity: 0;
+    transform: translateX(-7%) scale(1.08);
+    filter: blur(3px);
+  }
+
+  35% {
+    opacity: 1;
+    filter: blur(0);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+@keyframes cinematic-kenburns {
+  0% {
+    transform: scale(1.02);
+  }
+
+  100% {
+    transform: scale(1.12);
+  }
+}
+
+@keyframes gallery-content-in {
+  0% {
+    opacity: 0;
+    transform: translateY(14px);
+    filter: blur(4px);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+}
+
+@keyframes gallery-light-sweep {
+  0% {
+    transform: translateX(-180%) skewX(-15deg);
+    opacity: 0;
+  }
+
+  20% {
+    opacity: 1;
+  }
+
+  45% {
+    transform: translateX(700%) skewX(-15deg);
+    opacity: 0;
+  }
+
+  100% {
+    transform: translateX(700%) skewX(-15deg);
+    opacity: 0;
+  }
+}
+
+@keyframes gallery-pulse {
+  0%,
+  100% {
+    opacity: 0.5;
+    transform: scale(0.8);
+  }
+
+  50% {
+    opacity: 1;
+    transform: scale(1.2);
+  }
+}

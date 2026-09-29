@@ -1,0 +1,35 @@
+[functions.claim-rewards]
+verify_jwt = true
+
+[functions.create-midtrans-transaction]
+verify_jwt = true
+
+[functions.create-order]
+verify_jwt = true
+
+[functions.get-admin-ido-purchases]
+verify_jwt = true
+
+[functions.get-admin-orders]
+verify_jwt = true
+
+[functions.get-public-data]
+verify_jwt = false
+
+[functions.record-ido-purchase]
+verify_jwt = false
+
+[functions.manage-user-roles]
+verify_jwt = true
+
+[functions.midtrans-webhook]
+verify_jwt = false
+
+[functions.mint-nft-b]
+verify_jwt = true
+
+[functions.process-marketplace]
+verify_jwt = true
+
+[functions.set-admin-claim]
+verify_jwt = true
