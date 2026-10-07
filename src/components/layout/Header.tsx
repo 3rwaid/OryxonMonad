@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Leaf, Menu, X, Wallet, ChevronDown, LogOut, Copy, CheckCheck, Globe } from 'lucide-react';
+import oryxonLogo from '../../assets/images/oryxon_noBG.png';
+import { Menu, X, Wallet, ChevronDown, LogOut, Copy, CheckCheck, Globe } from 'lucide-react';
 import { useChainId } from 'wagmi';
 import { monadTestnet } from '../../lib/wagmi-config';
 import { useWallet } from '../../lib/wallet-context';
@@ -62,9 +63,11 @@ export default function Header() {
               to="/"
               className="flex items-center gap-2 group"
             >
-              <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center group-hover:scale-105 transition-transform">
-                <Leaf className="w-5 h-5 text-white" />
-              </div>
+              <img
+                src={oryxonLogo}
+                alt="Oryxon"
+                className="w-9 h-9 object-contain group-hover:scale-105 transition-transform"
+              />
               <span className="text-xl font-bold text-white tracking-tight">
                 Ory<span className="text-emerald-400">xon</span>
               </span>

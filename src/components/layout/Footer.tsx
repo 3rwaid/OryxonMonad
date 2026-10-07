@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { useI18n } from '../../lib/i18n';
-import { Leaf, Twitter } from 'lucide-react';
+import { Twitter } from 'lucide-react';
+import oryxonLogo from '../../assets/images/oryxon_noBG.png';
 
 const ECOSYSTEM_LINKS = [
   { key: 'nav.nftA', to: '/nft-a' },
@@ -26,9 +27,11 @@ export default function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           <div className="md:col-span-2">
             <div className="flex items-center gap-2 mb-4">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center">
-                <Leaf className="w-4 h-4 text-white" />
-              </div>
+              <img
+                src={oryxonLogo}
+                alt="Oryxon"
+                className="w-8 h-8 object-contain"
+              />
               <span className="text-lg font-bold text-white">
                 Ory<span className="text-emerald-400">xon</span>
               </span>
