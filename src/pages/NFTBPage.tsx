@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import {
   TreePine, MapPin, Calendar, User, Search, Filter,
   Leaf, Info, TreeDeciduous, Wallet, Loader, ExternalLink,
@@ -19,28 +19,7 @@ import { TREE_SPECIES } from '../lib/constants';
 import { getSigner, getOxyTokenContract, parseOxy, getExplorerTxUrl } from '../lib/contracts';
 import { supabase } from '../lib/supabase';
 
-// Lazily inject Midtrans Snap.js CDN script once per page session
-const MIDTRANS_CLIENT_KEY = import.meta.env.VITE_MIDTRANS_CLIENT_KEY as string;
-const MIDTRANS_IS_PRODUCTION = import.meta.env.VITE_MIDTRANS_IS_PRODUCTION === 'true';
-const MIDTRANS_ENABLED = import.meta.env.VITE_MIDTRANS_ENABLED !== 'false';
-const SNAP_SCRIPT_SRC = MIDTRANS_IS_PRODUCTION
-  ? 'https://app.midtrans.com/snap/snap.js'
-  : 'https://app.sandbox.midtrans.com/snap/snap.js';
 
-function loadSnapScript(): Promise<void> {
-  return new Promise((resolve, reject) => {
-    if (window.snap) { resolve(); return; }
-    const existing = document.getElementById('midtrans-snap');
-    if (existing) { existing.addEventListener('load', () => resolve()); return; }
-    const script = document.createElement('script');
-    script.id = 'midtrans-snap';
-    script.src = SNAP_SCRIPT_SRC;
-    script.setAttribute('data-client-key', MIDTRANS_CLIENT_KEY);
-    script.onload = () => resolve();
-    script.onerror = () => reject(new Error('Failed to load Midtrans Snap.js'));
-    document.head.appendChild(script);
-  });
-}
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -105,24 +84,21 @@ interface BuyNewModalProps {
 
 function BuyNewModal({ walletAddress, oxyBalance, onClose, onSuccess }: BuyNewModalProps) {
   const { t } = useI18n();
-  const [method, setMethod] = useState<'fiat' | 'oxy'>(MIDTRANS_ENABLED ? 'fiat' : 'oxy');
+  const [method, setMethod] = useState<'fiat' | 'oxy'>('fiat');
   const [species, setSpecies] = useState(TREE_SPECIES[0]);
   const [quantity, setQuantity] = useState(1);
   const [email, setEmail] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitStep, setSubmitStep] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
-  // Track the pending order ID so we can cancel it if the user closes Snap without paying
-  const pendingOrderIdRef = useRef<string | null>(null);
-
   const { settings, isLoading: settingsLoading } = useAppSettings();
 
-  const priceUsd = settings.tree_price_usd;
+  const priceIdr = settings.tree_price_idr;
   const priceOxy = settings.tree_price_oxy;
   const maxQty = settings.max_order_quantity;
   const receiverWallet = settings.oxy_receiver_wallet;
 
-  const totalUsd = priceUsd * quantity;
+  const totalIdr = priceIdr * quantity;
   const totalOxy = priceOxy * quantity;
   const hasEnoughOxy = parseFloat(oxyBalance) >= totalOxy;
   const hasReceiver = receiverWallet && receiverWallet.startsWith('0x');
@@ -139,82 +115,20 @@ function BuyNewModal({ walletAddress, oxyBalance, onClose, onSuccess }: BuyNewMo
     if (method === 'fiat') {
       if (!email.includes('@')) { setError('Please enter a valid email address.'); return; }
       setIsSubmitting(true);
-      setSubmitStep('Creating order...');
-      let orderId: string | null = null;
+      setSubmitStep('Creating DOKU Checkout...');
       try {
-        // Create order + Midtrans Snap token in one server-side call (service role — no SELECT grant needed)
-        const fnRes = await supabase.functions.invoke('create-midtrans-transaction', {
-          body: {
-            buyer_wallet: walletAddress,
-            buyer_email: email,
-            tree_species: species,
-            quantity,
-            unit_price_usd: priceUsd,
-            total_price_usd: totalUsd,
-          },
+        const fnRes = await supabase.functions.invoke('create-doku-transaction', {
+          body: { buyer_wallet: walletAddress, buyer_email: email, tree_species: species, quantity },
         });
         if (fnRes.error) {
-          const detail =
-            (fnRes.data as { error?: string } | null)?.error ??
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            (fnRes.error as any)?.context?.json?.error ??
-            fnRes.error.message;
+          const detail = (fnRes.data as { error?: string } | null)?.error ?? fnRes.error.message;
           throw new Error(detail);
         }
-        const { snap_token, order_id } = fnRes.data as { snap_token: string; order_id: string; midtrans_order_id: string };
-        if (!snap_token) throw new Error('No Snap token received from payment gateway.');
-        orderId = order_id;
-        pendingOrderIdRef.current = orderId;
-
-        // Load Snap.js then open the payment popup
-        setSubmitStep('Opening payment gateway...');
-        await loadSnapScript();
-        setIsSubmitting(false);
-        setSubmitStep('');
-
-        window.snap!.pay(snap_token, {
-          onSuccess: async (result) => {
-            // Mark order paid on the frontend immediately; webhook also does this server-side
-            await supabase
-              .from('tree_purchase_orders')
-              .update({ status: 'paid', midtrans_transaction_id: result.transaction_id })
-              .eq('id', orderId);
-            pendingOrderIdRef.current = null;
-            onSuccess({
-              method: 'fiat',
-              detail: t('nftb.paymentSuccess'),
-            });
-          },
-          onPending: () => {
-            // Bank transfer / QRIS pending — order stays pending, webhook will update it
-            pendingOrderIdRef.current = null;
-            onSuccess({
-              method: 'fiat',
-              detail: t('nftb.paymentPending', { email }),
-            });
-          },
-          onError: (result) => {
-            setError(t('nftb.paymentFailed', { msg: result.status_message }));
-          },
-          onClose: async () => {
-            // User dismissed Snap without completing — cancel the order
-            if (pendingOrderIdRef.current) {
-              await supabase
-                .from('tree_purchase_orders')
-                .update({ status: 'cancelled' })
-                .eq('id', pendingOrderIdRef.current);
-              pendingOrderIdRef.current = null;
-            }
-            setError(t('nftb.paymentClosed'));
-          },
-        });
+        const { payment_url } = fnRes.data as { payment_url?: string };
+        if (!payment_url) throw new Error('DOKU Checkout URL was not returned.');
+        window.location.assign(payment_url);
       } catch (err) {
-        // Cancel the DB order if something went wrong before Snap opened
-        if (orderId && pendingOrderIdRef.current) {
-          await supabase.from('tree_purchase_orders').update({ status: 'cancelled' }).eq('id', orderId);
-          pendingOrderIdRef.current = null;
-        }
-        setError(err instanceof Error ? err.message : 'Order failed. Please try again.');
+        setError(err instanceof Error ? err.message : 'Payment could not be started.');
         setIsSubmitting(false);
         setSubmitStep('');
       }
@@ -237,8 +151,8 @@ function BuyNewModal({ walletAddress, oxyBalance, onClose, onSuccess }: BuyNewMo
           payment_method: 'oxy',
           tree_species: species,
           quantity,
-          unit_price_usd: priceUsd,
-          total_price_usd: totalUsd,
+          unit_price_idr: priceIdr,
+          total_price_idr: totalIdr,
           oxy_amount: totalOxy,
         },
       });
@@ -322,7 +236,7 @@ function BuyNewModal({ walletAddress, oxyBalance, onClose, onSuccess }: BuyNewMo
                 <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">{t('nftb.paymentMethod')}</p>
                 <div className="grid grid-cols-2 gap-3">
                   {[
-                    { id: 'fiat' as const, icon: <CreditCard className="w-5 h-5" />, label: t('nftb.fiatMethod'), sub: `${priceUsd}${t('nftb.perTree')}`, disabled: !MIDTRANS_ENABLED },
+                    { id: 'fiat' as const, icon: <CreditCard className="w-5 h-5" />, label: t('nftb.fiatMethod'), sub: `Rp${priceIdr.toLocaleString('id-ID')}${t('nftb.perTree')}`, disabled: false },
                     { id: 'oxy' as const, icon: <Coins className="w-5 h-5" />, label: t('nftb.oxyMethod'), sub: `${priceOxy.toLocaleString()} OXY${t('nftb.perTree')}`, disabled: false },
                   ].map((opt) => (
                     <button key={opt.id} onClick={() => !opt.disabled && setMethod(opt.id)}
@@ -398,13 +312,13 @@ function BuyNewModal({ walletAddress, oxyBalance, onClose, onSuccess }: BuyNewMo
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-500">{quantity} × {species}</span>
                   <span className="font-medium">
-                    {method === 'fiat' ? `$${priceUsd.toFixed(2)} × ${quantity}` : `${priceOxy.toLocaleString()} × ${quantity}`}
+                    {method === 'fiat' ? `Rp${priceIdr.toLocaleString('id-ID')} × ${quantity}` : `${priceOxy.toLocaleString()} × ${quantity}`}
                   </span>
                 </div>
                 <div className="flex justify-between text-base font-bold border-t border-gray-200 pt-2 mt-2">
                   <span>Total</span>
                   <span className={method === 'oxy' ? 'text-forest-700' : 'text-gray-900'}>
-                    {method === 'fiat' ? `$${totalUsd.toFixed(2)}` : `${totalOxy.toLocaleString()} OXY`}
+                    {method === 'fiat' ? `Rp${totalIdr.toLocaleString('id-ID')}` : `${totalOxy.toLocaleString()} OXY`}
                   </span>
                 </div>
               </div>
@@ -423,18 +337,11 @@ function BuyNewModal({ walletAddress, oxyBalance, onClose, onSuccess }: BuyNewMo
                 </div>
               )}
 
-              {!MIDTRANS_ENABLED && (
-                <div className="flex items-start gap-2 p-3 bg-amber-50 rounded-xl border border-amber-200">
-                  <Info className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-                  <p className="text-xs text-amber-700">{t('nftb.fiatComingSoonDesc')}</p>
-                </div>
-              )}
-
               <div className="bg-amber-50 rounded-xl p-3 flex items-start gap-2">
                 <Info className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
                 <p className="text-xs text-amber-700">
                   {method === 'fiat'
-                    ? t('nftb.midtransInfo')
+                    ? t('nftb.dokuInfo')
                     : t('nftb.oxyPaymentInfo', { addr: walletAddress.slice(0, 8) })}
                 </p>
               </div>
@@ -455,7 +362,7 @@ function BuyNewModal({ walletAddress, oxyBalance, onClose, onSuccess }: BuyNewMo
                   : method === 'fiat' ? <CreditCard className="w-5 h-5" />
                   : <Coins className="w-5 h-5" />}
                 {isSubmitting ? submitStep || t('nftb.processing')
-                  : method === 'fiat' ? t('nftb.payUsd', { amount: totalUsd })
+                  : method === 'fiat' ? t('nftb.payIdr', { amount: totalIdr.toLocaleString('id-ID') })
                   : t('nftb.payOxy', { amount: totalOxy.toLocaleString() })}
               </button>
             </>
@@ -1150,7 +1057,7 @@ export default function NFTBPage() {
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
                   {[
-                    { method: t('nftb.fiatMethod'), icon: <CreditCard className="w-6 h-6" />, price: `${settings.tree_price_usd}`, desc: MIDTRANS_ENABLED ? t('nftb.fiatDesc') : t('nftb.fiatComingSoonDesc'), color: 'bg-sky-50 text-sky-600', border: 'border-sky-200', comingSoon: !MIDTRANS_ENABLED },
+                    { method: t('nftb.fiatMethod'), icon: <CreditCard className="w-6 h-6" />, price: `Rp${settings.tree_price_idr.toLocaleString('id-ID')}`, desc: t('nftb.fiatDesc'), color: 'bg-sky-50 text-sky-600', border: 'border-sky-200' },
                     { method: t('nftb.oxyMethod'), icon: <Coins className="w-6 h-6" />, price: `${settings.tree_price_oxy.toLocaleString()} OXY`, desc: t('nftb.oxyMethodDesc'), color: 'bg-forest-50 text-forest-600', border: 'border-forest-200' },
                     { method: t('nftb.marketplaceMethod'), icon: <Tag className="w-6 h-6" />, price: t('nftb.varies'), desc: t('nftb.marketplaceMethodDesc', { count: treeListings.length }), color: 'bg-amber-50 text-amber-600', border: 'border-amber-200' },
                   ].map((opt) => (

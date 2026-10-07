@@ -20,8 +20,8 @@ Deno.serve(async (req: Request) => {
       payment_method,
       tree_species,
       quantity,
-      unit_price_usd,
-      total_price_usd,
+      unit_price_idr,
+      total_price_idr,
       oxy_amount,
     } = body as {
       buyer_wallet: string;
@@ -29,8 +29,8 @@ Deno.serve(async (req: Request) => {
       payment_method: string;
       tree_species: string;
       quantity: number;
-      unit_price_usd: number;
-      total_price_usd: number;
+      unit_price_idr: number;
+      total_price_idr: number;
       oxy_amount?: number;
     };
 
@@ -55,8 +55,9 @@ Deno.serve(async (req: Request) => {
         payment_method,
         tree_species,
         quantity,
-        unit_price_usd,
-        total_price_usd,
+        unit_price_idr,
+        total_price_idr,
+        currency: "IDR",
         oxy_amount: oxy_amount ?? 0,
         status: "pending",
       })

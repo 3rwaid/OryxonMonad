@@ -2,14 +2,14 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 
 export interface AppSettings {
-  tree_price_usd: number;
+  tree_price_idr: number;
   tree_price_oxy: number;
   oxy_receiver_wallet: string;
   max_order_quantity: number;
 }
 
 const DEFAULTS: AppSettings = {
-  tree_price_usd: 25,
+  tree_price_idr: 400000,
   tree_price_oxy: 500,
   oxy_receiver_wallet: '',
   max_order_quantity: 10,
@@ -34,7 +34,7 @@ export function useAppSettings() {
       for (const row of rows) map[row.key] = row.value;
 
       setSettings({
-        tree_price_usd: map.tree_price_usd ? parseFloat(map.tree_price_usd) : DEFAULTS.tree_price_usd,
+        tree_price_idr: map.tree_price_idr ? parseFloat(map.tree_price_idr) : DEFAULTS.tree_price_idr,
         tree_price_oxy: map.tree_price_oxy ? parseFloat(map.tree_price_oxy) : DEFAULTS.tree_price_oxy,
         oxy_receiver_wallet: map.oxy_receiver_wallet ?? DEFAULTS.oxy_receiver_wallet,
         max_order_quantity: map.max_order_quantity ? parseInt(map.max_order_quantity) : DEFAULTS.max_order_quantity,

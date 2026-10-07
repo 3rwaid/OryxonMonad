@@ -35,14 +35,14 @@ interface PurchaseOrder {
   payment_method: 'fiat' | 'oxy';
   tree_species: string;
   quantity: number;
-  unit_price_usd: number;
-  total_price_usd: number;
-  total_price_idr?: number;
+  unit_price_idr: number;
+  total_price_idr: number;
   oxy_amount: number;
   status: 'pending' | 'paid' | 'minting' | 'delivered' | 'cancelled';
   tx_hash: string;
-  midtrans_order_id?: string;
-  midtrans_transaction_id?: string;
+  doku_invoice_number?: string;
+  doku_payment_url?: string;
+  doku_transaction_id?: string;
   token_ids: number[];
   notes: string;
   created_at: string;
@@ -89,7 +89,7 @@ function OverviewTab({ orders, totalMinted, totalStaked }: { orders: PurchaseOrd
   const oxyOrders  = orders.filter((o) => o.payment_method === 'oxy');
   const fiatOrders = orders.filter((o) => o.payment_method === 'fiat');
   const totalOxy   = oxyOrders.reduce((s, o) => s + Number(o.oxy_amount), 0);
-  const totalUsd   = fiatOrders.reduce((s, o) => s + Number(o.total_price_usd), 0);
+  const totalIdr   = fiatOrders.reduce((s, o) => s + Number(o.total_price_idr), 0);
 
   return (
     <div className="space-y-6">
@@ -130,9 +130,9 @@ function OverviewTab({ orders, totalMinted, totalStaked }: { orders: PurchaseOrd
         <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
           <p className="text-xs text-gray-500 mb-2">{t('admin.fiatRevenue')}</p>
           <p className="text-2xl font-display font-bold text-gray-900">
-            ${totalUsd.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+            Rp {totalIdr.toLocaleString('id-ID')}
           </p>
-          <p className="text-xs text-gray-400 mt-1">{t('admin.usdFromOrders', { count: fiatOrders.length })}</p>
+          <p className="text-xs text-gray-400 mt-1">{t('admin.idrFromOrders', { count: fiatOrders.length })}</p>
         </div>
       </div>
 
@@ -156,7 +156,7 @@ function OverviewTab({ orders, totalMinted, totalStaked }: { orders: PurchaseOrd
                   <div className="flex items-center gap-2 shrink-0">
                     {o.payment_method === 'oxy'
                       ? <span className="flex items-center gap-1 text-xs text-forest-600"><Coins className="w-3.5 h-3.5" />{Number(o.oxy_amount).toLocaleString()} OXY</span>
-                      : <span className="flex items-center gap-1 text-xs text-sky-600"><CreditCard className="w-3.5 h-3.5" />${o.total_price_usd}</span>}
+                      : <span className="flex items-center gap-1 text-xs text-sky-600"><CreditCard className="w-3.5 h-3.5" />Rp {Number(o.total_price_idr).toLocaleString('id-ID')}</span>}
                     <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${s.bg} ${s.text}`}>{s.label}</span>
                   </div>
                 </div>
@@ -286,7 +286,7 @@ function OrdersTab({
                       <span>Amount: <strong className="text-gray-800">
                         {order.payment_method === 'oxy'
                           ? `${Number(order.oxy_amount).toLocaleString()} OXY`
-                          : `$${order.total_price_usd}`}
+                          : `Rp ${Number(order.total_price_idr).toLocaleString('id-ID')}`}
                       </strong></span>
                       <span>{formatDate(order.created_at)}</span>
                       {order.tx_hash && (
@@ -297,12 +297,12 @@ function OrdersTab({
                           </a>
                         </span>
                       )}
-                      {order.midtrans_order_id && (
+                      {order.doku_invoice_number && (
                         <span className="col-span-2 flex items-center gap-1">
-                          Midtrans ID:
-                          <span className="font-mono text-sky-700">{order.midtrans_order_id}</span>
-                          {order.midtrans_transaction_id && (
-                            <span className="text-gray-400">/ Txn: {order.midtrans_transaction_id.slice(0, 12)}...</span>
+                          DOKU Invoice:
+                          <span className="font-mono text-sky-700">{order.doku_invoice_number}</span>
+                          {order.doku_transaction_id && (
+                            <span className="text-gray-400">/ Txn: {order.doku_transaction_id.slice(0, 12)}...</span>
                           )}
                         </span>
                       )}
@@ -529,7 +529,7 @@ function SettingsTab() {
   const [savedKey, setSavedKey] = useState<string | null>(null);
 
   const fields = [
-    { key: 'tree_price_usd',      label: t('admin.treePriceUsd'),        type: 'number', hint: t('admin.treePriceUsdHint') },
+    { key: 'tree_price_idr',      label: t('admin.treePriceIdr'),        type: 'number', hint: t('admin.treePriceIdrHint') },
     { key: 'tree_price_oxy',      label: t('admin.treePriceOxy'),        type: 'number', hint: t('admin.treePriceOxyHint') },
     { key: 'oxy_receiver_wallet', label: t('admin.oxyReceiverWallet'), type: 'text',   hint: t('admin.oxyReceiverWalletHint') },
     { key: 'max_order_quantity',  label: t('admin.maxTreesPerOrder'),         type: 'number', hint: t('admin.maxTreesPerOrderHint') },
@@ -609,53 +609,21 @@ function SettingsTab() {
         </ul>
       </div>
 
-      {/* Midtrans status */}
       <div className="rounded-2xl border p-5 bg-white shadow-sm">
         <div className="flex items-center justify-between mb-3">
           <p className="font-semibold text-gray-900 text-sm flex items-center gap-2">
             <CreditCard className="w-4 h-4 text-sky-500" />
-            {t('admin.midtransGateway')}
+            {t('admin.dokuGateway')}
           </p>
-          <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${
-            import.meta.env.VITE_MIDTRANS_IS_PRODUCTION === 'true'
-              ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-              : 'bg-amber-50 text-amber-700 border border-amber-200'
-          }`}>
-            {import.meta.env.VITE_MIDTRANS_IS_PRODUCTION === 'true' ? 'Production' : 'Sandbox'}
+          <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-700 border border-amber-200">
+            IDR Checkout
           </span>
         </div>
-        <div className="space-y-2">
-          <div className="flex items-center justify-between text-xs">
-            <span className="text-gray-500">{t('admin.clientKey')}</span>
-            <span className="font-mono text-gray-700">
-              {import.meta.env.VITE_MIDTRANS_CLIENT_KEY
-                ? `${String(import.meta.env.VITE_MIDTRANS_CLIENT_KEY).slice(0, 22)}…`
-                : <span className="text-red-500">{t('admin.notConfigured')}</span>}
-            </span>
-          </div>
-          <div className="flex items-center justify-between text-xs">
-            <span className="text-gray-500">Snap.js URL</span>
-            <span className="font-mono text-gray-400 truncate max-w-xs">
-              {import.meta.env.VITE_MIDTRANS_IS_PRODUCTION === 'true'
-                ? 'app.midtrans.com/snap/snap.js'
-                : 'app.sandbox.midtrans.com/snap/snap.js'}
-            </span>
-          </div>
-          <div className="flex items-center justify-between text-xs">
-            <span className="text-gray-500">{t('admin.serverKeyEdgeFn')}</span>
-            <span className="font-mono text-gray-400">{t('admin.serverKeyValue')}</span>
-          </div>
-          <div className="flex items-center justify-between text-xs">
-            <span className="text-gray-500">{t('admin.webhookUrl')}</span>
-            <span className="font-mono text-gray-600 truncate max-w-xs text-right">
-              {`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/midtrans-webhook`}
-            </span>
-          </div>
+        <div className="space-y-2 text-xs">
+          <div className="flex items-center justify-between"><span className="text-gray-500">{t('admin.clientId')}</span><span className="font-mono text-gray-400">{t('admin.serverSecretValue')}</span></div>
+          <div className="flex items-center justify-between"><span className="text-gray-500">{t('admin.webhookUrl')}</span><span className="font-mono text-gray-600 truncate max-w-xs text-right">{`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/doku-webhook`}</span></div>
         </div>
-        <p className="text-xs text-gray-400 mt-3 pt-3 border-t border-gray-100">
-          To go live: set <code className="bg-gray-100 px-1 rounded">VITE_MIDTRANS_IS_PRODUCTION=true</code> and add your
-          production <code className="bg-gray-100 px-1 rounded">MIDTRANS_SERVER_KEY</code> as a Supabase Edge Function secret.
-        </p>
+        <p className="text-xs text-gray-400 mt-3 pt-3 border-t border-gray-100">DOKU credentials are kept server-side. New fiat orders use IDR and open DOKU Checkout.</p>
       </div>
     </div>
   );
